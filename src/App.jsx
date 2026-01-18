@@ -153,27 +153,29 @@ export default function App() {
 
           {error && <div style={styles.error}>{error}</div>}
 
+<div style={styles.inputBar}>
+  <textarea
+    rows={1}
+    placeholder="Type your question…"
+    value={input}
+    onChange={(e) => setInput(e.target.value)}
+    onKeyDown={handleKeyDown}
+    style={styles.textarea}
+  />
 
-            <textarea
-              rows={1}
-              placeholder="Type your question…"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              style={styles.textarea}
-            />
+  <button
+    onClick={handleSend}
+    disabled={loading}
+    style={{
+      ...styles.sendBtn,
+      opacity: loading ? 0.6 : 1,
+      cursor: loading ? "not-allowed" : "pointer",
+    }}
+  >
+    {loading ? "..." : "Send"}
+  </button>
+</div>
 
-            <button
-              onClick={handleSend}
-              disabled={loading}
-              style={{
-                ...styles.sendBtn,
-                opacity: loading ? 0.6 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
-              {loading ? "..." : "Send"}
-            </button>
           </div>
         </div>
       </main>
