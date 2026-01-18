@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-const API_BASE = "http://localhost:5001";
+const API_BASE = "https://rexolve-backend.onrender.com";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
