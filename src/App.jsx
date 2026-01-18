@@ -6,7 +6,6 @@ const API_BASE = "https://rexolve-backend.onrender.com";
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -17,9 +16,7 @@ export default function App() {
       const saved = localStorage.getItem("doubtSolverHistory");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setMessages(parsed);
-        }
+        if (Array.isArray(parsed)) setMessages(parsed);
       }
     } catch (err) {
       console.error("Failed to load history:", err);
@@ -28,7 +25,10 @@ export default function App() {
 
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem("doubtSolverHistory", JSON.stringify(messages));
+      localStorage.setItem(
+        "doubtSolverHistory",
+        JSON.stringify(messages)
+      );
     }
   }, [messages]);
 
@@ -41,79 +41,44 @@ export default function App() {
   /* ===================== SEND ===================== */
 
   async function handleSend() {
-    if ((!input.trim() && !image) || loading) return;
+    if (!input.trim() || loading) return;
 
+    const userMsg = {
+      role: "user",
+      text: input.trim(),
+    };
+
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
     setInput("");
     setLoading(true);
     setError("");
 
     try {
-      let ocrText = "";
-
-      // OCR
-      if (image) {
-        const formData = new FormData();
-        formData.append("image", image);
-
-        const ocrRes = await fetch(`${API_BASE}/ocr`, {
-          method: "POST",
-          body: formData,
-        });
-
-        const contentType = ocrRes.headers.get("content-type");
-
-if (!ocrRes.ok) {
-  const errText = await ocrRes.text();
-  throw new Error(`OCR failed (${ocrRes.status}): ${errText}`);
-}
-
-if (!contentType || !contentType.includes("application/json")) {
-  const raw = await ocrRes.text();
-  throw new Error("OCR returned non-JSON:\n" + raw.slice(0, 200));
-}
-
-const ocrData = await ocrRes.json();
-ocrText = ocrData.text;
-      }
-
-      const finalText =
-  input.trim()
-    ? input.trim()
-    : ocrText.trim()
-      ? ocrText.trim()
-      : "[Image question]";
-
-const userMsg = {
-  role: "user",
-  text: finalText,
-  imagePreview: image ? URL.createObjectURL(image) : null,
-};
-
-const nextMessages = [...messages, userMsg];
-setMessages(nextMessages);
-
-
-      // Ask AI
       const res = await fetch(`${API_BASE}/ask-doubt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
- body: JSON.stringify({
-  messages: nextMessages.map((m) => ({
-    role: m.role,
-    content: m.text,
-  })),
-}),
+        body: JSON.stringify({
+          messages: nextMessages.map((m) => ({
+            role: m.role,
+            content: m.text,
+          })),
+        }),
+      });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI error");
 
-      const aiMsg = { role: "assistant", text: data.answer };
+      const aiMsg = {
+        role: "assistant",
+        text: data.answer,
+      };
+
       setMessages([...nextMessages, aiMsg]);
     } catch (err) {
       console.error(err);
       setError(err.message || "Something went wrong");
     } finally {
-      setImage(null);
       setLoading(false);
     }
   }
@@ -136,7 +101,6 @@ setMessages(nextMessages);
           <span>ReXolve</span>
         </div>
 
-        {/* CLEAR BUTTON — TOP RIGHT */}
         <button onClick={handleClearChat} style={styles.clearBtn}>
           Clear
         </button>
@@ -174,14 +138,6 @@ setMessages(nextMessages);
                   }}
                 >
                   <ReactMarkdown>{m.text}</ReactMarkdown>
-
-                  {m.imagePreview && (
-                    <img
-                      src={m.imagePreview}
-                      alt="uploaded"
-                      style={styles.image}
-                    />
-                  )}
                 </div>
               </div>
             ))}
@@ -197,14 +153,10 @@ setMessages(nextMessages);
 
           {error && <div style={styles.error}>{error}</div>}
 
-          {/* INPUT */}
+          {/* INPUT BAR */}
           <div style={styles.inputBar}>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImage(e.target.files[0] || null)}
-              style={styles.fileInput}
-            />
+            {/* Kept ONLY for visual parity */}
+            <input type="file" style={styles.fileInput} disabled />
 
             <textarea
               rows={1}
@@ -241,7 +193,8 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     fontFamily: "system-ui, sans-serif",
-    background: "linear-gradient(180deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%)",
+    background:
+      "linear-gradient(180deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%)",
   },
 
   header: {
@@ -249,7 +202,7 @@ const styles = {
     padding: "14px 20px",
     borderBottom: "1px solid #e5e7eb",
     display: "flex",
-    justifyContent: "space-between", // ⬅ pushes Clear to the right
+    justifyContent: "space-between",
     alignItems: "center",
   },
 
@@ -343,12 +296,6 @@ const styles = {
     color: "#0f172a",
   },
 
-  image: {
-    marginTop: 8,
-    maxWidth: "100%",
-    borderRadius: 8,
-  },
-
   inputBar: {
     display: "flex",
     alignItems: "center",
@@ -360,6 +307,8 @@ const styles = {
 
   fileInput: {
     fontSize: 11,
+    opacity: 0.6,
+    cursor: "not-allowed",
   },
 
   textarea: {
