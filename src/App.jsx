@@ -89,13 +89,19 @@ ocrText = ocrData.text;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages.map((m) => ({
-            role: m.role,
-            content: m.text,
-          })),
-          ocrText,
-        }),
-      });
+  messages: [
+    ...(ocrText
+      ? [{
+          role: "system",
+          content: `The following text was extracted from an image using OCR:\n\n${ocrText}`
+        }]
+      : []),
+    ...nextMessages.map((m) => ({
+      role: m.role,
+      content: m.text,
+    })),
+  ],
+}),
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI error");
