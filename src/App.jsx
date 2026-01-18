@@ -46,6 +46,7 @@ export default function App() {
     const userMsg = {
       role: "user",
       text: input || "[Image question]",
+      text: input || (ocrText ? ocrText : "[Image question]"),
       imagePreview: image ? URL.createObjectURL(image) : null,
     };
 
