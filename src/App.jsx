@@ -68,10 +68,20 @@ export default function App() {
           body: formData,
         });
 
-        const ocrData = await ocrRes.json();
-        if (!ocrRes.ok) throw new Error(ocrData.error || "OCR failed");
+        const contentType = ocrRes.headers.get("content-type");
 
-        ocrText = ocrData.text;
+if (!ocrRes.ok) {
+  const errText = await ocrRes.text();
+  throw new Error(`OCR failed (${ocrRes.status}): ${errText}`);
+}
+
+if (!contentType || !contentType.includes("application/json")) {
+  const raw = await ocrRes.text();
+  throw new Error("OCR returned non-JSON:\n" + raw.slice(0, 200));
+}
+
+const ocrData = await ocrRes.json();
+ocrText = ocrData.text;
       }
 
       // Ask AI
