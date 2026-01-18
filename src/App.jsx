@@ -1,4 +1,3 @@
-console.log("FORCE REDEPLOY 2026-01-18");
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -10,27 +9,27 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /* ===================== PERSISTENCE ===================== */
+  /* ===================== LOAD / SAVE ===================== */
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("doubtSolverHistory");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) setMessages(parsed);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+        }
       }
-    } catch (err) {
-      console.error("Failed to load history:", err);
+    } catch {
+      // ignore corrupted storage
     }
   }, []);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(
-        "doubtSolverHistory",
-        JSON.stringify(messages)
-      );
-    }
+    localStorage.setItem(
+      "doubtSolverHistory",
+      JSON.stringify(messages)
+    );
   }, [messages]);
 
   function handleClearChat() {
@@ -44,12 +43,12 @@ export default function App() {
   async function handleSend() {
     if (!input.trim() || loading) return;
 
-    const userMsg = {
+    const userMessage = {
       role: "user",
       text: input.trim(),
     };
 
-    const nextMessages = [...messages, userMsg];
+    const nextMessages = [...messages, userMessage];
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
@@ -67,18 +66,18 @@ export default function App() {
         }),
       });
 
+      if (!res.ok) {
+        throw new Error("Server error");
+      }
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI error");
 
-      const aiMsg = {
-        role: "assistant",
-        text: data.answer,
-      };
-
-      setMessages([...nextMessages, aiMsg]);
+      setMessages([
+        ...nextMessages,
+        { role: "assistant", text: data.answer },
+      ]);
     } catch (err) {
-      console.error(err);
-      setError(err.message || "Something went wrong");
+      setError("Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +94,6 @@ export default function App() {
 
   return (
     <div style={styles.app}>
-      {/* HEADER */}
       <header style={styles.header}>
         <div style={styles.brand}>
           <div style={styles.logo}>R</div>
@@ -107,7 +105,6 @@ export default function App() {
         </button>
       </header>
 
-      {/* MAIN */}
       <main style={styles.container}>
         <div style={styles.chatBox}>
           <div style={styles.messages}>
@@ -154,29 +151,23 @@ export default function App() {
 
           {error && <div style={styles.error}>{error}</div>}
 
-<div style={styles.inputBar}>
-  <textarea
-    rows={1}
-    placeholder="Type your question…"
-    value={input}
-    onChange={(e) => setInput(e.target.value)}
-    onKeyDown={handleKeyDown}
-    style={styles.textarea}
-  />
+          <div style={styles.inputBar}>
+            <textarea
+              rows={1}
+              placeholder="Type your question…"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              style={styles.textarea}
+            />
 
-  <button
-    onClick={handleSend}
-    disabled={loading}
-    style={{
-      ...styles.sendBtn,
-      opacity: loading ? 0.6 : 1,
-      cursor: loading ? "not-allowed" : "pointer",
-    }}
-  >
-    {loading ? "..." : "Send"}
-  </button>
-</div>
-
+            <button
+              onClick={handleSend}
+              disabled={loading}
+              style={styles.sendBtn}
+            >
+              {loading ? "..." : "Send"}
+            </button>
           </div>
         </div>
       </main>
@@ -211,7 +202,6 @@ const styles = {
     gap: 10,
     fontSize: 18,
     fontWeight: 700,
-    color: "#0f172a",
   },
 
   logo: {
@@ -223,7 +213,6 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: 800,
   },
 
   clearBtn: {
@@ -231,9 +220,7 @@ const styles = {
     border: "1px solid #e5e7eb",
     borderRadius: 6,
     padding: "6px 12px",
-    fontSize: 12,
     cursor: "pointer",
-    color: "#475569",
   },
 
   container: {
@@ -248,7 +235,6 @@ const styles = {
     maxWidth: 800,
     background: "#ffffff",
     borderRadius: 12,
-    boxShadow: "0 4px 16px rgba(15,23,42,0.05)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -269,7 +255,6 @@ const styles = {
   example: {
     marginTop: 8,
     fontSize: 13,
-    color: "#0f172a",
   },
 
   row: {
@@ -281,8 +266,6 @@ const styles = {
     maxWidth: "75%",
     padding: "10px 14px",
     borderRadius: 10,
-    fontSize: 14,
-    lineHeight: 1.5,
   },
 
   userBubble: {
@@ -292,16 +275,13 @@ const styles = {
 
   aiBubble: {
     background: "#f1f5f9",
-    color: "#0f172a",
   },
 
   inputBar: {
     display: "flex",
-    alignItems: "center",
     gap: 8,
     padding: 12,
     borderTop: "1px solid #e5e7eb",
-    background: "#ffffff",
   },
 
   textarea: {
@@ -310,8 +290,6 @@ const styles = {
     border: "1px solid #e5e7eb",
     borderRadius: 8,
     padding: "8px 10px",
-    fontSize: 14,
-    outline: "none",
   },
 
   sendBtn: {
@@ -320,15 +298,12 @@ const styles = {
     border: "none",
     borderRadius: 8,
     padding: "8px 16px",
-    fontSize: 14,
-    fontWeight: 500,
   },
 
   error: {
     color: "#b91c1c",
     fontSize: 12,
     padding: "6px 12px",
-    borderTop: "1px solid #fee2e2",
     background: "#fef2f2",
   },
 };
