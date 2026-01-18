@@ -43,15 +43,6 @@ export default function App() {
   async function handleSend() {
     if ((!input.trim() && !image) || loading) return;
 
-    const userMsg = {
-      role: "user",
-      text: input || "[Image question]",
-      text: input || (ocrText ? ocrText : "[Image question]"),
-      imagePreview: image ? URL.createObjectURL(image) : null,
-    };
-
-    const nextMessages = [...messages, userMsg];
-    setMessages(nextMessages);
     setInput("");
     setLoading(true);
     setError("");
@@ -85,23 +76,32 @@ const ocrData = await ocrRes.json();
 ocrText = ocrData.text;
       }
 
+      const finalText =
+  input.trim()
+    ? input.trim()
+    : ocrText.trim()
+      ? ocrText.trim()
+      : "[Image question]";
+
+const userMsg = {
+  role: "user",
+  text: finalText,
+  imagePreview: image ? URL.createObjectURL(image) : null,
+};
+
+const nextMessages = [...messages, userMsg];
+setMessages(nextMessages);
+
+
       // Ask AI
       const res = await fetch(`${API_BASE}/ask-doubt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-  messages: [
-    ...(ocrText
-      ? [{
-          role: "system",
-          content: `The following text was extracted from an image using OCR:\n\n${ocrText}`
-        }]
-      : []),
-    ...nextMessages.map((m) => ({
-      role: m.role,
-      content: m.text,
-    })),
-  ],
+ body: JSON.stringify({
+  messages: nextMessages.map((m) => ({
+    role: m.role,
+    content: m.text,
+  })),
 }),
 
       const data = await res.json();
