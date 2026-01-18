@@ -1,3 +1,4 @@
+console.log("FORCE REDEPLOY 2026-01-18");
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
