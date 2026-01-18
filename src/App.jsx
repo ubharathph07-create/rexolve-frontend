@@ -153,10 +153,6 @@ export default function App() {
 
           {error && <div style={styles.error}>{error}</div>}
 
-          {/* INPUT BAR */}
-          <div style={styles.inputBar}>
-            {/* Kept ONLY for visual parity */}
-            <input type="file" style={styles.fileInput} disabled />
 
             <textarea
               rows={1}
@@ -303,12 +299,6 @@ const styles = {
     padding: 12,
     borderTop: "1px solid #e5e7eb",
     background: "#ffffff",
-  },
-
-  fileInput: {
-    fontSize: 11,
-    opacity: 0.6,
-    cursor: "not-allowed",
   },
 
   textarea: {
