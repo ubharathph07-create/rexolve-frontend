@@ -233,12 +233,11 @@ const styles = {
     width: 32,
     height: 32,
     borderRadius: 8,
-    background: "#2563eb",
+    background: "#0f172a",
     color: "#fff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: 700,
   },
 
   clearBtn: {
