@@ -96,8 +96,8 @@ export default function App() {
     <div style={styles.app}>
       <header style={styles.header}>
         <div style={styles.brand}>
-          <div style={styles.logo}>R</div>
-          <span>ReXolve</span>
+          <div style={styles.logo}>P</div>
+          <span>PrepSeek</span>
         </div>
 
         <button onClick={handleClearChat} style={styles.clearBtn}>
@@ -110,14 +110,14 @@ export default function App() {
           <div style={styles.messages}>
             {messages.length === 0 && (
              <div style={styles.empty}>
-  <h2>Welcome to ReXolve</h2>
+  <h2>Welcome to PrepSeek</h2>
 
   <p style={{ marginTop: "8px", fontSize: "15px", color: "#555" }}>
     Your AI study companion
   </p>
 
   <p style={{ marginTop: "16px", fontSize: "14px", color: "#666" }}>
-    Ask questions, clarify doubts, and explore ideas in simple language.
+    Ask questions, clarify doubts, and explore ideas.
   </p>
 
   <p style={styles.example}>
@@ -233,11 +233,12 @@ const styles = {
     width: 32,
     height: 32,
     borderRadius: 8,
-    background: "#0f172a",
+    background: "#2563eb",
     color: "#fff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    fontWeight: 700,
   },
 
   clearBtn: {
