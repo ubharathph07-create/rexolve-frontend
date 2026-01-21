@@ -109,13 +109,38 @@ export default function App() {
         <div style={styles.chatBox}>
           <div style={styles.messages}>
             {messages.length === 0 && (
-              <div style={styles.empty}>
-                <h2>Welcome</h2>
-                <p>Your personal study tutor.</p>
-                <p style={styles.example}>
-                  Try: “Explain photosynthesis simply”
-                </p>
-              </div>
+             <div style={styles.empty}>
+  <h2>Welcome to ReXolve</h2>
+
+  <p style={{ marginTop: "8px", fontSize: "15px", color: "#555" }}>
+    Your AI study companion
+  </p>
+
+  <p style={{ marginTop: "16px", fontSize: "14px", color: "#666" }}>
+    Ask questions, clarify doubts, and explore ideas in simple language.
+  </p>
+
+  <p style={styles.example}>
+    Try: “Explain photosynthesis simply”
+  </p>
+
+  <div
+    style={{
+      marginTop: "24px",
+      padding: "10px 14px",
+      background: "#f5f7fa",
+      borderRadius: "8px",
+      fontSize: "12.5px",
+      color: "#444",
+      maxWidth: "420px",
+      lineHeight: "1.5",
+    }}
+  >
+    ⚠️ This AI helps with explanations and learning support.  
+    It may make mistakes and should not replace textbooks, teachers, or verified sources.
+  </div>
+</div>
+
             )}
 
             {messages.map((m, i) => (
