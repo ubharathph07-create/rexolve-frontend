@@ -109,39 +109,33 @@ export default function App() {
         <div style={styles.chatBox}>
           <div style={styles.messages}>
             {messages.length === 0 && (
-             <div style={styles.empty}>
-  <h2>Welcome to PrepSeek</h2>
+  <div style={styles.empty}>
+    <h2 style={{ fontWeight: 600, color: "#222" }}>
+      Welcome to PrepSeek
+    </h2>
 
-  <p style={{ marginTop: "8px", fontSize: "15px", color: "#555" }}>
-    Your AI study companion
-  </p>
+    <p style={{ marginTop: "10px", fontSize: "15px", color: "#555" }}>
+      A calm assistant for everyday decisions.
+    </p>
 
-  <p style={{ marginTop: "16px", fontSize: "14px", color: "#666" }}>
-    Ask questions, clarify doubts, and explore ideas.
-  </p>
+    <p style={{ marginTop: "16px", fontSize: "14px", color: "#666", maxWidth: "460px" }}>
+      Ask anything — career choices, money decisions, tech picks, or life questions.
+      Get clear, balanced guidance in seconds.
+    </p>
 
-  <p style={styles.example}>
-    Try: “Explain photosynthesis simply”
-  </p>
+    <div style={styles.examplesBox}>
+      <div style={styles.exampleLine}>“Mac or Windows?”</div>
+      <div style={styles.exampleLine}>“Should I switch jobs now?”</div>
+      <div style={styles.exampleLine}>“Is renting or buying better for me?”</div>
+    </div>
 
-  <div
-    style={{
-      marginTop: "24px",
-      padding: "10px 14px",
-      background: "#f5f7fa",
-      borderRadius: "8px",
-      fontSize: "12.5px",
-      color: "#444",
-      maxWidth: "420px",
-      lineHeight: "1.5",
-    }}
-  >
-    ⚠️ This AI helps with explanations and learning support.  
-    It may make mistakes and should not replace textbooks, teachers, or verified sources.
+    <div style={styles.trustNote}>
+      This tool offers guidance, not instructions.  
+      Final decisions are always yours.
+    </div>
   </div>
-</div>
+)}
 
-            )}
 
             {messages.map((m, i) => (
               <div
@@ -167,8 +161,8 @@ export default function App() {
 
             {loading && (
               <div style={{ ...styles.row, justifyContent: "flex-start" }}>
-                <div style={{ ...styles.bubble, ...styles.aiBubble }}>
-                  Thinking…
+                <div style={{ ...styles.bubble, ...styles.aiBubble, fontStyle: "italic", color: "#666" }}>
+                  Considering…
                 </div>
               </div>
             )}
@@ -179,7 +173,7 @@ export default function App() {
           <div style={styles.inputBar}>
             <textarea
               rows={1}
-              placeholder="Type your question…"
+              placeholder="Type here…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
