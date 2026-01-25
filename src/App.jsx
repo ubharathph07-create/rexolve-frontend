@@ -306,7 +306,7 @@ export default function App() {
                 <div style={styles.empty}>
                   <h2>What are you deciding today?</h2>
                   <p style={{ marginTop: 8, color: "#555" }}>
-                    A calm assistant to think through everyday choices.
+                    All Signal. No Noise.
                   </p>
 
                   <div style={styles.examplesBox}>
