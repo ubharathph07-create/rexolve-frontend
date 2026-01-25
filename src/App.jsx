@@ -6,11 +6,7 @@ const API_BASE = "https://rexolve-backend.onrender.com";
 /* ===================== HELPERS ===================== */
 
 function generateId() {
-  return Math.random().toString(36).slice(2);
-}
-
-function autoTitle(text) {
-  return text.replace(/[?.!]/g, "").slice(0, 40);
+  return Math.random().toString(36).slice(2, 10);
 }
 
 /* ===================== APP ===================== */
@@ -22,12 +18,11 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const currentSession = sessions.find((s) => s.id === currentId);
-
   /* ===================== LOAD / SAVE ===================== */
 
   useEffect(() => {
     const saved = localStorage.getItem("prepseekSessions");
+
     if (saved) {
       const parsed = JSON.parse(saved);
       if (parsed.length > 0) {
@@ -37,13 +32,13 @@ export default function App() {
       }
     }
 
-    // create first session
     const first = {
       id: generateId(),
       title: "New decision",
       messages: [],
       createdAt: Date.now(),
     };
+
     setSessions([first]);
     setCurrentId(first.id);
   }, []);
@@ -52,30 +47,35 @@ export default function App() {
     localStorage.setItem("prepseekSessions", JSON.stringify(sessions));
   }, [sessions]);
 
-  /* ===================== SESSION ACTIONS ===================== */
+  const currentSession = sessions.find((s) => s.id === currentId);
 
-  function newSession() {
-    const fresh = {
-      id: generateId(),
-      title: "New decision",
-      messages: [],
-      createdAt: Date.now(),
-    };
-    setSessions([fresh, ...sessions]);
-    setCurrentId(fresh.id);
+  if (!currentSession) {
+    return <div style={{ padding: 40 }}>Loading…</div>;
   }
 
-  function clearAll() {
-    if (!window.confirm("Clear all decisions?")) return;
-    localStorage.removeItem("prepseekSessions");
+  /* ===================== SESSION CONTROLS ===================== */
+
+  function createNewSession() {
     const fresh = {
       id: generateId(),
       title: "New decision",
       messages: [],
       createdAt: Date.now(),
     };
-    setSessions([fresh]);
+
+    setSessions([fresh, ...sessions]);
     setCurrentId(fresh.id);
+    setInput("");
+  }
+
+  function clearCurrentSession() {
+    if (!window.confirm("Clear this decision thread?")) return;
+
+    const updated = sessions.map((s) =>
+      s.id === currentId ? { ...s, messages: [] } : s
+    );
+
+    setSessions(updated);
   }
 
   /* ===================== SEND ===================== */
@@ -84,20 +84,9 @@ export default function App() {
     if (!input.trim() || loading) return;
 
     const userMessage = { role: "user", text: input.trim() };
+    const updatedMessages = [...currentSession.messages, userMessage];
 
-    let updatedSessions = sessions.map((s) => {
-      if (s.id !== currentId) return s;
-
-      const isFirst = s.messages.length === 0;
-
-      return {
-        ...s,
-        title: isFirst ? autoTitle(input.trim()) : s.title,
-        messages: [...s.messages, userMessage],
-      };
-    });
-
-    setSessions(updatedSessions);
+    updateSessionMessages(updatedMessages);
     setInput("");
     setLoading(true);
     setError("");
@@ -107,35 +96,52 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updatedSessions
-            .find((s) => s.id === currentId)
-            .messages.map((m) => ({
-              role: m.role,
-              content: m.text,
-            })),
+          messages: updatedMessages.map((m) => ({
+            role: m.role,
+            content: m.text,
+          })),
         }),
       });
 
+      if (!res.ok) throw new Error("Server error");
+
       const data = await res.json();
 
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentId
-            ? {
-                ...s,
-                messages: [
-                  ...s.messages,
-                  { role: "assistant", text: data.answer },
-                ],
-              }
-            : s
-        )
-      );
+      const finalMessages = [
+        ...updatedMessages,
+        { role: "assistant", text: data.answer },
+      ];
+
+      updateSessionMessages(finalMessages);
+
+      // Auto-title session from first question
+      if (currentSession.messages.length === 0) {
+        renameSession(
+          currentId,
+          userMessage.text.slice(0, 40) + "…"
+        );
+      }
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  function updateSessionMessages(messages) {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === currentId ? { ...s, messages } : s
+      )
+    );
+  }
+
+  function renameSession(id, title) {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, title } : s
+      )
+    );
   }
 
   function handleKeyDown(e) {
@@ -149,11 +155,17 @@ export default function App() {
 
   return (
     <div style={styles.app}>
-      {/* Sidebar */}
-      <div style={styles.sidebar}>
+      {/* SIDEBAR */}
+      <aside style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
-          <strong>Decisions</strong>
-          <button onClick={newSession} style={styles.newBtn}>＋</button>
+          <div style={styles.brand}>
+            <div style={styles.logo}>P</div>
+            PrepSeek
+          </div>
+
+          <button onClick={createNewSession} style={styles.newBtn}>
+            + New
+          </button>
         </div>
 
         <div style={styles.sessionList}>
@@ -171,17 +183,14 @@ export default function App() {
             </div>
           ))}
         </div>
-      </div>
+      </aside>
 
-      {/* Main */}
+      {/* MAIN */}
       <div style={styles.main}>
         <header style={styles.header}>
-          <div style={styles.brand}>
-            <div style={styles.logo}>P</div>
-            <span>PrepSeek</span>
-          </div>
+          <div style={styles.title}>{currentSession.title}</div>
 
-          <button onClick={clearAll} style={styles.clearBtn}>
+          <button onClick={clearCurrentSession} style={styles.clearBtn}>
             Clear
           </button>
         </header>
@@ -191,14 +200,12 @@ export default function App() {
             <div style={styles.messages}>
               {currentSession.messages.length === 0 && (
                 <div style={styles.empty}>
-                  <h2 style={{ fontWeight: 700 }}>
-                    What are you deciding today?
-                  </h2>
-                  <p style={{ marginTop: 10, color: "#555" }}>
+                  <h2>What are you deciding today?</h2>
+                  <p style={styles.subtitle}>
                     A calm assistant to think through everyday choices.
                   </p>
 
-                  <div style={styles.chips}>
+                  <div style={styles.examplesBox}>
                     {[
                       "Should I switch jobs this year?",
                       "Rent or buy in my situation?",
@@ -208,7 +215,7 @@ export default function App() {
                     ].map((q, i) => (
                       <div
                         key={i}
-                        style={styles.chip}
+                        style={styles.examplePill}
                         onClick={() => setInput(q)}
                       >
                         {q}
@@ -217,9 +224,11 @@ export default function App() {
                   </div>
 
                   <div style={styles.disclaimer}>
-                    ⚠️ This is an AI and may be inaccurate. Use it as a thinking aid,
-                    not a source of absolute truth.
-                    <br />
+                    ⚠️ This is an AI and may be inaccurate or incomplete.  
+                    Use it as a thinking aid — not a source of absolute truth.
+                  </div>
+
+                  <div style={styles.footerNote}>
                     Final decisions — and responsibility — are always yours.
                   </div>
                 </div>
@@ -295,7 +304,7 @@ const styles = {
   },
 
   sidebar: {
-    width: 240,
+    width: 260,
     background: "#ffffff",
     borderRight: "1px solid #e5e7eb",
     display: "flex",
@@ -307,28 +316,54 @@ const styles = {
     borderBottom: "1px solid #e5e7eb",
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  brand: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontWeight: 700,
+  },
+
+  logo: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    background: "#0f172a",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   newBtn: {
-    border: "none",
-    background: "#0f172a",
-    color: "#fff",
+    border: "1px solid #e5e7eb",
+    background: "#f8fafc",
     borderRadius: 6,
+    padding: "4px 10px",
     cursor: "pointer",
   },
 
   sessionList: {
     flex: 1,
     overflowY: "auto",
+    padding: 8,
   },
 
   sessionItem: {
-    padding: "10px 14px",
+    padding: "8px 10px",
+    borderRadius: 6,
     cursor: "pointer",
-    borderBottom: "1px solid #f1f5f9",
+    fontSize: 14,
+    color: "#1e293b",
   },
 
-  main: { flex: 1, display: "flex", flexDirection: "column" },
+  main: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+  },
 
   header: {
     background: "#ffffff",
@@ -339,76 +374,102 @@ const styles = {
     alignItems: "center",
   },
 
-  brand: { display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 700 },
-
-  logo: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    background: "#0f172a",
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+  title: {
+    fontWeight: 600,
   },
 
   clearBtn: {
-    background: "transparent",
     border: "1px solid #e5e7eb",
+    background: "transparent",
     borderRadius: 6,
     padding: "6px 12px",
     cursor: "pointer",
   },
 
-  container: { flex: 1, display: "flex", justifyContent: "center", padding: 16 },
+  container: {
+    flex: 1,
+    display: "flex",
+    justifyContent: "center",
+    padding: 16,
+  },
 
   chatBox: {
     width: "100%",
     maxWidth: 900,
     background: "#ffffff",
-    borderRadius: 16,
+    borderRadius: 14,
     display: "flex",
     flexDirection: "column",
+    overflow: "hidden",
   },
 
-  messages: { flex: 1, padding: 24, overflowY: "auto" },
+  messages: {
+    flex: 1,
+    padding: 24,
+    overflowY: "auto",
+  },
 
-  empty: { textAlign: "center", marginTop: 100 },
+  empty: {
+    textAlign: "center",
+    marginTop: 80,
+  },
 
-  chips: {
+  subtitle: {
+    marginTop: 10,
+    color: "#555",
+  },
+
+  examplesBox: {
+    marginTop: 30,
     display: "flex",
-    gap: 12,
     flexWrap: "wrap",
     justifyContent: "center",
-    marginTop: 30,
+    gap: 10,
   },
 
-  chip: {
-    padding: "10px 16px",
+  examplePill: {
     background: "#f1f5f9",
-    borderRadius: 999,
+    borderRadius: 20,
+    padding: "8px 14px",
+    fontSize: 14,
     cursor: "pointer",
   },
 
   disclaimer: {
-    marginTop: 40,
+    marginTop: 30,
     fontSize: 13,
-    color: "#555",
-    maxWidth: 500,
-    marginInline: "auto",
+    color: "#666",
   },
 
-  row: { display: "flex", marginBottom: 14 },
+  footerNote: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#475569",
+  },
 
-  bubble: { maxWidth: "75%", padding: "12px 16px", borderRadius: 14 },
+  row: {
+    display: "flex",
+    marginBottom: 14,
+  },
 
-  userBubble: { background: "#0f172a", color: "#ffffff" },
+  bubble: {
+    maxWidth: "70%",
+    padding: "12px 16px",
+    borderRadius: 12,
+  },
 
-  aiBubble: { background: "#f1f5f9" },
+  userBubble: {
+    background: "#0f172a",
+    color: "#ffffff",
+  },
+
+  aiBubble: {
+    background: "#f1f5f9",
+  },
 
   inputBar: {
     display: "flex",
-    gap: 10,
+    gap: 8,
     padding: 14,
     borderTop: "1px solid #e5e7eb",
   },
@@ -417,7 +478,7 @@ const styles = {
     flex: 1,
     resize: "none",
     border: "1px solid #e5e7eb",
-    borderRadius: 10,
+    borderRadius: 8,
     padding: "10px 12px",
     fontSize: 14,
   },
@@ -426,14 +487,14 @@ const styles = {
     background: "#0f172a",
     color: "#ffffff",
     border: "none",
-    borderRadius: 10,
+    borderRadius: 8,
     padding: "10px 20px",
     cursor: "pointer",
   },
 
   error: {
     color: "#b91c1c",
-    fontSize: 12,
+    fontSize: 13,
     padding: "6px 12px",
     background: "#fef2f2",
   },
