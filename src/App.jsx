@@ -16,13 +16,9 @@ export default function App() {
       const saved = localStorage.getItem("doubtSolverHistory");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setMessages(parsed);
-        }
+        if (Array.isArray(parsed)) setMessages(parsed);
       }
-    } catch {
-      // ignore corrupted storage
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -66,9 +62,7 @@ export default function App() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Server error");
-      }
+      if (!res.ok) throw new Error("Server error");
 
       const data = await res.json();
 
@@ -76,7 +70,7 @@ export default function App() {
         ...nextMessages,
         { role: "assistant", text: data.answer },
       ]);
-    } catch (err) {
+    } catch {
       setError("Something went wrong. Try again.");
     } finally {
       setLoading(false);
@@ -94,10 +88,11 @@ export default function App() {
 
   return (
     <div style={styles.app}>
+      {/* Header */}
       <header style={styles.header}>
         <div style={styles.brand}>
           <div style={styles.logo}>P</div>
-          <span>PrepSeek</span>
+          <span style={styles.brandText}>PrepSeek</span>
         </div>
 
         <button onClick={handleClearChat} style={styles.clearBtn}>
@@ -105,38 +100,37 @@ export default function App() {
         </button>
       </header>
 
+      {/* Main */}
       <main style={styles.container}>
         <div style={styles.chatBox}>
           <div style={styles.messages}>
+            {/* Empty State */}
             {messages.length === 0 && (
-  <div style={styles.empty}>
-    <h2 style={{ fontWeight: 600, color: "#222" }}>
-      Welcome to PrepSeek
-    </h2>
+              <div style={styles.empty}>
+                <h1 style={styles.heroTitle}>
+                  What are you deciding today?
+                </h1>
 
-    <p style={{ marginTop: "10px", fontSize: "15px", color: "#555" }}>
-      A calm assistant for everyday decisions.
-    </p>
+                <p style={styles.heroSubtitle}>
+                  A calm assistant to think through everyday choices.
+                </p>
 
-    <p style={{ marginTop: "16px", fontSize: "14px", color: "#666", maxWidth: "460px" }}>
-      Ask anything — career choices, money decisions, tech picks, or life questions.
-      Get clear, balanced guidance in seconds.
-    </p>
+                <div style={styles.promptGrid}>
+                  <div style={styles.prompt}>Should I switch jobs this year?</div>
+                  <div style={styles.prompt}>Rent or buy in my situation?</div>
+                  <div style={styles.prompt}>Mac or Windows for my work?</div>
+                  <div style={styles.prompt}>Is this startup idea worth pursuing?</div>
+                  <div style={styles.prompt}>How should I invest my savings?</div>
+                </div>
 
-    <div style={styles.examplesBox}>
-      <div style={styles.exampleLine}>“Mac or Windows?”</div>
-      <div style={styles.exampleLine}>“Should I switch jobs now?”</div>
-      <div style={styles.exampleLine}>“Is renting or buying better for me?”</div>
-    </div>
+                <p style={styles.trustNote}>
+                  You’ll get guidance, trade-offs, and reasoning — not commands.  
+                  Final decisions are always yours.
+                </p>
+              </div>
+            )}
 
-    <div style={styles.trustNote}>
-      This tool offers guidance, not instructions.  
-      Final decisions are always yours.
-    </div>
-  </div>
-)}
-
-
+            {/* Messages */}
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -161,8 +155,15 @@ export default function App() {
 
             {loading && (
               <div style={{ ...styles.row, justifyContent: "flex-start" }}>
-                <div style={{ ...styles.bubble, ...styles.aiBubble, fontStyle: "italic", color: "#666" }}>
-                  Considering…
+                <div
+                  style={{
+                    ...styles.bubble,
+                    ...styles.aiBubble,
+                    fontStyle: "italic",
+                    color: "#666",
+                  }}
+                >
+                  Thinking…
                 </div>
               </div>
             )}
@@ -170,10 +171,11 @@ export default function App() {
 
           {error && <div style={styles.error}>{error}</div>}
 
+          {/* Input */}
           <div style={styles.inputBar}>
             <textarea
               rows={1}
-              placeholder="Type here…"
+              placeholder="Describe your situation or question…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -185,7 +187,7 @@ export default function App() {
               disabled={loading}
               style={styles.sendBtn}
             >
-              {loading ? "..." : "Send"}
+              {loading ? "…" : "Send"}
             </button>
           </div>
         </div>
@@ -201,14 +203,14 @@ const styles = {
     height: "100vh",
     display: "flex",
     flexDirection: "column",
-    fontFamily: "system-ui, sans-serif",
+    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
     background:
-      "linear-gradient(180deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%)",
+      "linear-gradient(180deg, #f8fafc 0%, #eef2ff 60%, #f8fafc 100%)",
   },
 
   header: {
     background: "#ffffff",
-    padding: "14px 20px",
+    padding: "14px 22px",
     borderBottom: "1px solid #e5e7eb",
     display: "flex",
     justifyContent: "space-between",
@@ -219,72 +221,118 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 10,
+  },
+
+  brandText: {
     fontSize: 18,
     fontWeight: 700,
+    color: "#0f172a",
   },
 
   logo: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: 8,
     background: "#0f172a",
     color: "#fff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    fontWeight: 700,
   },
 
   clearBtn: {
     background: "transparent",
     border: "1px solid #e5e7eb",
-    borderRadius: 6,
-    padding: "6px 12px",
+    borderRadius: 8,
+    padding: "6px 14px",
     cursor: "pointer",
+    color: "#334155",
   },
 
   container: {
     flex: 1,
     display: "flex",
     justifyContent: "center",
-    padding: 16,
+    padding: 18,
   },
 
   chatBox: {
     width: "100%",
-    maxWidth: 800,
+    maxWidth: 860,
     background: "#ffffff",
-    borderRadius: 12,
+    borderRadius: 14,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.04)",
   },
 
   messages: {
     flex: 1,
-    padding: 20,
+    padding: "28px 26px",
     overflowY: "auto",
   },
 
+  /* Empty state */
+
   empty: {
     textAlign: "center",
-    marginTop: 80,
-    color: "#475569",
+    marginTop: 90,
+    color: "#334155",
   },
 
-  example: {
-    marginTop: 8,
-    fontSize: 13,
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: 700,
+    marginBottom: 10,
+    color: "#0f172a",
   },
+
+  heroSubtitle: {
+    fontSize: 16,
+    color: "#555",
+    marginBottom: 34,
+  },
+
+  promptGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+    gap: 14,
+    maxWidth: 640,
+    margin: "0 auto 34px",
+  },
+
+  prompt: {
+    background: "#f1f5f9",
+    padding: "12px 16px",
+    borderRadius: 10,
+    fontSize: 14,
+    color: "#334155",
+    cursor: "pointer",
+  },
+
+  trustNote: {
+    fontSize: 13,
+    color: "#64748b",
+    maxWidth: 520,
+    margin: "0 auto",
+    lineHeight: "1.6",
+  },
+
+  /* Chat */
 
   row: {
     display: "flex",
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   bubble: {
     maxWidth: "75%",
-    padding: "10px 14px",
-    borderRadius: 10,
+    padding: "12px 16px",
+    borderRadius: 12,
+    lineHeight: "1.6",
+    fontSize: 15,
   },
 
   userBubble: {
@@ -294,12 +342,15 @@ const styles = {
 
   aiBubble: {
     background: "#f1f5f9",
+    color: "#0f172a",
   },
+
+  /* Input */
 
   inputBar: {
     display: "flex",
-    gap: 8,
-    padding: 12,
+    gap: 10,
+    padding: "14px 16px",
     borderTop: "1px solid #e5e7eb",
   },
 
@@ -307,22 +358,26 @@ const styles = {
     flex: 1,
     resize: "none",
     border: "1px solid #e5e7eb",
-    borderRadius: 8,
-    padding: "8px 10px",
+    borderRadius: 10,
+    padding: "10px 12px",
+    fontSize: 14,
+    outline: "none",
   },
 
   sendBtn: {
     background: "#0f172a",
     color: "#ffffff",
     border: "none",
-    borderRadius: 8,
-    padding: "8px 16px",
+    borderRadius: 10,
+    padding: "10px 18px",
+    cursor: "pointer",
+    fontWeight: 600,
   },
 
   error: {
     color: "#b91c1c",
     fontSize: 12,
-    padding: "6px 12px",
+    padding: "8px 14px",
     background: "#fef2f2",
   },
 };
