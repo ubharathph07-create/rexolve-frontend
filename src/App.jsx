@@ -3,211 +3,80 @@ import ReactMarkdown from "react-markdown";
 
 const API_BASE = "https://rexolve-backend.onrender.com";
 
-/* ===================== HELPERS ===================== */
-
-function generateId() {
-  return Math.random().toString(36).substring(2, 10);
-}
-
-/* ===================== SESSION ROW ===================== */
-
-function SessionRow({ session, active, onSelect, onRename, onDelete }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(session.title);
-
-  function finishRename() {
-    setEditing(false);
-    if (value.trim()) onRename(value.trim());
-  }
-
-  return (
-    <div
-      onClick={!editing ? onSelect : undefined}
-      style={{
-        ...styles.sessionItem,
-        background: active ? "#eef2ff" : "transparent",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 8,
-      }}
-    >
-      {editing ? (
-        <input
-          autoFocus
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={finishRename}
-          onKeyDown={(e) => e.key === "Enter" && finishRename()}
-          style={{
-            flex: 1,
-            border: "1px solid #e5e7eb",
-            borderRadius: 6,
-            padding: "4px 6px",
-            fontSize: 14,
-          }}
-        />
-      ) : (
-        <span
-          style={{
-            flex: 1,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {session.title}
-        </span>
-      )}
-
-      {!editing && (
-        <div style={{ display: "flex", gap: 6 }}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditing(true);
-            }}
-            style={styles.iconBtn}
-          >
-            ✏️
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            style={styles.iconBtn}
-          >
-            🗑
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ===================== APP ===================== */
-
-function handleExampleClick(text) {
-  setInput(text);
-}
-
 export default function App() {
   const [sessions, setSessions] = useState([]);
-  const [currentId, setCurrentId] = useState(null);
+  const [activeId, setActiveId] = useState(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /* ===================== LOAD / SAVE ===================== */
+  /* ===================== STORAGE ===================== */
 
   useEffect(() => {
-    const saved = localStorage.getItem("prepseekSessions");
-
+    const saved = localStorage.getItem("prepseek_sessions");
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.length > 0) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         setSessions(parsed);
-        setCurrentId(parsed[0].id);
+        setActiveId(parsed[0].id);
         return;
       }
     }
-
-    const first = {
-      id: generateId(),
-      title: "New decision",
-      messages: [],
-      createdAt: Date.now(),
-    };
-
-    setSessions([first]);
-    setCurrentId(first.id);
+    createNewSession();
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("prepseekSessions", JSON.stringify(sessions));
+    localStorage.setItem("prepseek_sessions", JSON.stringify(sessions));
   }, [sessions]);
 
-  const currentSession = sessions.find((s) => s.id === currentId);
-
-  if (!currentSession) {
-    return <div style={{ padding: 40 }}>Loading…</div>;
-  }
-
-  /* ===================== SESSION ACTIONS ===================== */
-
-  function newSession() {
-    const fresh = {
-      id: generateId(),
+  function createNewSession() {
+    const id = Date.now();
+    const newSession = {
+      id,
       title: "New decision",
       messages: [],
-      createdAt: Date.now(),
     };
-
-    setSessions([fresh, ...sessions]);
-    setCurrentId(fresh.id);
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveId(id);
   }
 
-  function renameSession(id, title) {
-    setSessions(
-      sessions.map((s) =>
-        s.id === id ? { ...s, title } : s
-      )
+  function updateSession(id, updater) {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === id ? updater(s) : s))
     );
   }
 
   function deleteSession(id) {
-    if (!window.confirm("Delete this decision permanently?")) return;
-
+    if (!window.confirm("Delete this decision?")) return;
     const remaining = sessions.filter((s) => s.id !== id);
-
-    if (remaining.length === 0) {
-      const fresh = {
-        id: generateId(),
-        title: "New decision",
-        messages: [],
-        createdAt: Date.now(),
-      };
-
-      setSessions([fresh]);
-      setCurrentId(fresh.id);
+    setSessions(remaining);
+    if (remaining.length > 0) {
+      setActiveId(remaining[0].id);
     } else {
-      setSessions(remaining);
-      setCurrentId(remaining[0].id);
+      createNewSession();
     }
   }
 
-  function clearCurrent() {
-    if (!window.confirm("Clear this conversation?")) return;
-
-    setSessions(
-      sessions.map((s) =>
-        s.id === currentId ? { ...s, messages: [] } : s
-      )
-    );
-  }
+  const activeSession =
+    sessions.find((s) => s.id === activeId) || sessions[0];
 
   /* ===================== SEND ===================== */
 
   async function handleSend() {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !activeSession) return;
 
     const userMessage = {
       role: "user",
       text: input.trim(),
     };
 
-    const updated = {
-      ...currentSession,
-      messages: [...currentSession.messages, userMessage],
-    };
+    const updatedMessages = [...activeSession.messages, userMessage];
 
-    setSessions(
-      sessions.map((s) =>
-        s.id === currentId ? updated : s
-      )
-    );
+    updateSession(activeId, (s) => ({
+      ...s,
+      messages: updatedMessages,
+      title: s.messages.length === 0 ? input.slice(0, 40) : s.title,
+    }));
 
     setInput("");
     setLoading(true);
@@ -218,7 +87,7 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updated.messages.map((m) => ({
+          messages: updatedMessages.map((m) => ({
             role: m.role,
             content: m.text,
           })),
@@ -229,25 +98,13 @@ export default function App() {
 
       const data = await res.json();
 
-      const withAnswer = {
-        ...updated,
+      updateSession(activeId, (s) => ({
+        ...s,
         messages: [
-          ...updated.messages,
+          ...updatedMessages,
           { role: "assistant", text: data.answer },
         ],
-      };
-
-      if (updated.messages.length === 1) {
-        const title =
-          updated.messages[0].text.slice(0, 40) + "...";
-        withAnswer.title = title;
-      }
-
-      setSessions(
-        sessions.map((s) =>
-          s.id === currentId ? withAnswer : s
-        )
-      );
+      }));
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
@@ -267,135 +124,166 @@ export default function App() {
   return (
     <div style={styles.app}>
       {/* SIDEBAR */}
-      <div style={styles.sidebar}>
+      <aside style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
-          <strong>PrepSeek</strong>
-          <button onClick={newSession} style={styles.newBtn}>
+          <div style={styles.brand}>
+            <div style={styles.logo}>P</div>
+            <span>PrepSeek</span>
+          </div>
+
+          <button onClick={createNewSession} style={styles.newBtn}>
             + New
           </button>
         </div>
 
         <div style={styles.sessionList}>
           {sessions.map((s) => (
-            <SessionRow
+            <div
               key={s.id}
-              session={s}
-              active={s.id === currentId}
-              onSelect={() => setCurrentId(s.id)}
-              onRename={(title) => renameSession(s.id, title)}
-              onDelete={() => deleteSession(s.id)}
-            />
+              onClick={() => setActiveId(s.id)}
+              style={{
+                ...styles.sessionItem,
+                ...(s.id === activeId
+                  ? styles.sessionActive
+                  : {}),
+              }}
+            >
+              <span style={styles.sessionTitle}>{s.title}</span>
+
+              <div style={styles.sessionActions}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const name = prompt("Rename decision:", s.title);
+                    if (name) {
+                      updateSession(s.id, (x) => ({
+                        ...x,
+                        title: name,
+                      }));
+                    }
+                  }}
+                  style={styles.iconBtn}
+                >
+                  ✏️
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteSession(s.id);
+                  }}
+                  style={styles.iconBtn}
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
           ))}
         </div>
-      </div>
+      </aside>
 
       {/* MAIN */}
-      <div style={styles.main}>
-        <header style={styles.header}>
-          <div style={{ fontWeight: 600 }}>{currentSession.title}</div>
+      <main style={styles.main}>
+        <header style={styles.topBar}>
+          <span style={{ fontWeight: 600 }}>
+            {activeSession?.title}
+          </span>
 
-          <button onClick={clearCurrent} style={styles.clearBtn}>
+          <button
+            onClick={() =>
+              updateSession(activeId, (s) => ({
+                ...s,
+                messages: [],
+              }))
+            }
+            style={styles.clearBtn}
+          >
             Clear
           </button>
         </header>
 
-        <main style={styles.container}>
-          <div style={styles.chatBox}>
-            <div style={styles.messages}>
-              {currentSession.messages.length === 0 && (
-                <div style={styles.empty}>
-                  <h2>What are you deciding today?</h2>
-                  <p style={{ marginTop: 8, color: "#555" }}>
-                    A calm assistant to think through everyday choices.
-                  </p>
+        <div style={styles.chatBox}>
+          <div style={styles.messages}>
+            {activeSession.messages.length === 0 && (
+              <div style={styles.empty}>
+                <h2>What are you deciding today?</h2>
+                <p>A calm assistant to think through everyday choices.</p>
 
-                  <div style={styles.examplesBox}>
-  {[
-    "Should I switch jobs this year?",
-    "Rent or buy in my situation?",
-    "Is this startup idea worth pursuing?",
-    "How should I invest my savings?",
-  ].map((text, i) => (
-    <div
-      key={i}
-      onClick={() => handleExampleClick(text)}
-      style={styles.exampleLine}
-    >
-      {text}
-    </div>
-  ))}
-</div>
-
-
-                  <div style={styles.trustNote}>
-                    ⚠️ This is an AI and may be inaccurate or incomplete.  
-                    Use it as a thinking aid — not absolute truth.  
-                    Final decisions are always yours.
-                  </div>
+                <div style={styles.suggestions}>
+                  <div>Should I switch jobs this year?</div>
+                  <div>Rent or buy in my situation?</div>
+                  <div>Mac or Windows for my work?</div>
                 </div>
-              )}
 
-              {currentSession.messages.map((m, i) => (
+                <p style={styles.disclaimer}>
+                  ⚠️ This is an AI and may be inaccurate or incomplete.
+                  Use it as a thinking aid — not a source of absolute
+                  truth. Final decisions are always yours.
+                </p>
+              </div>
+            )}
+
+            {activeSession.messages.map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  ...styles.row,
+                  justifyContent:
+                    m.role === "user"
+                      ? "flex-end"
+                      : "flex-start",
+                }}
+              >
                 <div
-                  key={i}
                   style={{
-                    ...styles.row,
-                    justifyContent:
-                      m.role === "user" ? "flex-end" : "flex-start",
+                    ...styles.bubble,
+                    ...(m.role === "user"
+                      ? styles.userBubble
+                      : styles.aiBubble),
                   }}
                 >
-                  <div
-                    style={{
-                      ...styles.bubble,
-                      ...(m.role === "user"
-                        ? styles.userBubble
-                        : styles.aiBubble),
-                    }}
-                  >
-                    <ReactMarkdown>{m.text}</ReactMarkdown>
-                  </div>
+                  <ReactMarkdown>{m.text}</ReactMarkdown>
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {loading && (
-                <div style={{ ...styles.row, justifyContent: "flex-start" }}>
-                  <div
-                    style={{
-                      ...styles.bubble,
-                      ...styles.aiBubble,
-                      fontStyle: "italic",
-                      color: "#666",
-                    }}
-                  >
-                    Thinking…
-                  </div>
+            {loading && (
+              <div style={styles.row}>
+                <div
+                  style={{
+                    ...styles.bubble,
+                    ...styles.aiBubble,
+                    fontStyle: "italic",
+                  }}
+                >
+                  Thinking…
                 </div>
-              )}
-            </div>
-
-            {error && <div style={styles.error}>{error}</div>}
-
-            <div style={styles.inputBar}>
-              <textarea
-                rows={1}
-                placeholder="Describe your situation or question..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                style={styles.textarea}
-              />
-
-              <button
-                onClick={handleSend}
-                disabled={loading}
-                style={styles.sendBtn}
-              >
-                {loading ? "..." : "Send"}
-              </button>
-            </div>
+              </div>
+            )}
           </div>
-        </main>
-      </div>
+
+          {error && <div style={styles.error}>{error}</div>}
+
+          <div style={styles.inputBar}>
+            <textarea
+              rows={1}
+              placeholder="Describe your situation or question..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              style={styles.textarea}
+            />
+
+            <button
+              onClick={handleSend}
+              disabled={loading}
+              style={styles.sendBtn}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
@@ -422,11 +310,30 @@ const styles = {
   },
 
   sidebarHeader: {
-    padding: "14px 16px",
-    borderBottom: "1px solid #e5e7eb",
+    padding: 16,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+
+  brand: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    fontSize: 18,
+    fontWeight: 700,
+  },
+
+  logo: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    background: "#0f172a",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 700,
   },
 
   newBtn: {
@@ -434,28 +341,40 @@ const styles = {
     borderRadius: 6,
     padding: "4px 10px",
     cursor: "pointer",
-    background: "#f8fafc",
   },
 
   sessionList: {
     flex: 1,
-    overflowY: "auto",
     padding: 8,
+    overflowY: "auto",
   },
 
   sessionItem: {
-    padding: "8px 10px",
+    padding: "10px 12px",
     borderRadius: 8,
     cursor: "pointer",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  sessionActive: {
+    background: "#eef2ff",
+  },
+
+  sessionTitle: {
     fontSize: 14,
   },
 
+  sessionActions: {
+    display: "flex",
+    gap: 6,
+  },
+
   iconBtn: {
-    border: "none",
     background: "transparent",
+    border: "none",
     cursor: "pointer",
-    fontSize: 14,
-    opacity: 0.6,
   },
 
   /* MAIN */
@@ -466,83 +385,56 @@ const styles = {
     flexDirection: "column",
   },
 
-  header: {
-    background: "#ffffff",
+  topBar: {
     padding: "14px 20px",
     borderBottom: "1px solid #e5e7eb",
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
   },
 
   clearBtn: {
-    background: "transparent",
     border: "1px solid #e5e7eb",
     borderRadius: 6,
     padding: "6px 12px",
     cursor: "pointer",
   },
 
-  container: {
-    flex: 1,
-    display: "flex",
-    justifyContent: "center",
-    padding: 16,
-  },
-
   chatBox: {
-    width: "100%",
+    flex: 1,
     maxWidth: 900,
-    background: "#ffffff",
-    borderRadius: 12,
+    margin: "0 auto",
+    width: "100%",
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden",
   },
 
   messages: {
     flex: 1,
-    padding: 24,
+    padding: 30,
     overflowY: "auto",
   },
 
   empty: {
-  textAlign: "center",
-  marginTop: 80,
-  color: "#475569",
-  position: "relative",
-  zIndex: 2,
-},
-
-  examplesBox: {
-    marginTop: 24,
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 10,
+    textAlign: "center",
+    marginTop: 100,
+    color: "#334155",
   },
 
-  exampleLine: {
-  background: "#f1f5f9",
-  padding: "8px 14px",
-  borderRadius: 999,
-  fontSize: 14,
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  display: "inline-block",
-  pointerEvents: "auto",
-  userSelect: "none",
-},
+  suggestions: {
+    marginTop: 20,
+    display: "flex",
+    gap: 10,
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
 
-exampleLineHover: {
-  background: "#e2e8f0",
-},
-
-  trustNote: {
-    marginTop: 28,
+  disclaimer: {
+    marginTop: 30,
     fontSize: 13,
     color: "#64748b",
-    lineHeight: 1.6,
+    maxWidth: 500,
+    marginLeft: "auto",
+    marginRight: "auto",
   },
 
   row: {
@@ -551,9 +443,9 @@ exampleLineHover: {
   },
 
   bubble: {
-    maxWidth: "70%",
-    padding: "12px 16px",
-    borderRadius: 12,
+    maxWidth: "75%",
+    padding: "10px 14px",
+    borderRadius: 10,
   },
 
   userBubble: {
@@ -567,8 +459,8 @@ exampleLineHover: {
 
   inputBar: {
     display: "flex",
-    gap: 10,
-    padding: 14,
+    gap: 8,
+    padding: 16,
     borderTop: "1px solid #e5e7eb",
   },
 
@@ -576,16 +468,15 @@ exampleLineHover: {
     flex: 1,
     resize: "none",
     border: "1px solid #e5e7eb",
-    borderRadius: 10,
+    borderRadius: 8,
     padding: "10px 12px",
-    fontSize: 14,
   },
 
   sendBtn: {
     background: "#0f172a",
     color: "#ffffff",
     border: "none",
-    borderRadius: 10,
+    borderRadius: 8,
     padding: "10px 18px",
     cursor: "pointer",
   },
