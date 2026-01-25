@@ -89,6 +89,10 @@ function SessionRow({ session, active, onSelect, onRename, onDelete }) {
 
 /* ===================== APP ===================== */
 
+function handleExampleClick(text) {
+  setInput(text);
+}
+
 export default function App() {
   const [sessions, setSessions] = useState([]);
   const [currentId, setCurrentId] = useState(null);
@@ -306,10 +310,22 @@ export default function App() {
                   </p>
 
                   <div style={styles.examplesBox}>
-                    <div style={styles.exampleLine}>Should I switch jobs this year?</div>
-                    <div style={styles.exampleLine}>Rent or buy in my situation?</div>
-                    <div style={styles.exampleLine}>Is this startup idea worth pursuing?</div>
-                  </div>
+  {[
+    "Should I switch jobs this year?",
+    "Rent or buy in my situation?",
+    "Is this startup idea worth pursuing?",
+    "How should I invest my savings?",
+  ].map((text, i) => (
+    <div
+      key={i}
+      onClick={() => handleExampleClick(text)}
+      style={styles.exampleLine}
+    >
+      {text}
+    </div>
+  ))}
+</div>
+
 
                   <div style={styles.trustNote}>
                     ⚠️ This is an AI and may be inaccurate or incomplete.  
@@ -505,11 +521,13 @@ const styles = {
   },
 
   exampleLine: {
-    background: "#f1f5f9",
-    padding: "8px 14px",
-    borderRadius: 999,
-    fontSize: 14,
-  },
+  background: "#f1f5f9",
+  padding: "8px 14px",
+  borderRadius: 999,
+  fontSize: 14,
+  cursor: "pointer",
+  transition: "background 0.2s",
+},
 
   trustNote: {
     marginTop: 28,
