@@ -355,7 +355,7 @@ export default function App() {
                       color: "#666",
                     }}
                   >
-                    Thinking…
+                    Considering…
                   </div>
                 </div>
               )}
