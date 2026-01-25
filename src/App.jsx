@@ -6,7 +6,85 @@ const API_BASE = "https://rexolve-backend.onrender.com";
 /* ===================== HELPERS ===================== */
 
 function generateId() {
-  return Math.random().toString(36).slice(2, 10);
+  return Math.random().toString(36).substring(2, 10);
+}
+
+/* ===================== SESSION ROW ===================== */
+
+function SessionRow({ session, active, onSelect, onRename, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(session.title);
+
+  function finishRename() {
+    setEditing(false);
+    if (value.trim()) onRename(value.trim());
+  }
+
+  return (
+    <div
+      onClick={!editing ? onSelect : undefined}
+      style={{
+        ...styles.sessionItem,
+        background: active ? "#eef2ff" : "transparent",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      {editing ? (
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={finishRename}
+          onKeyDown={(e) => e.key === "Enter" && finishRename()}
+          style={{
+            flex: 1,
+            border: "1px solid #e5e7eb",
+            borderRadius: 6,
+            padding: "4px 6px",
+            fontSize: 14,
+          }}
+        />
+      ) : (
+        <span
+          style={{
+            flex: 1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {session.title}
+        </span>
+      )}
+
+      {!editing && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+            style={styles.iconBtn}
+          >
+            ✏️
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            style={styles.iconBtn}
+          >
+            🗑
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ===================== APP ===================== */
@@ -53,9 +131,9 @@ export default function App() {
     return <div style={{ padding: 40 }}>Loading…</div>;
   }
 
-  /* ===================== SESSION CONTROLS ===================== */
+  /* ===================== SESSION ACTIONS ===================== */
 
-  function createNewSession() {
+  function newSession() {
     const fresh = {
       id: generateId(),
       title: "New decision",
@@ -65,17 +143,45 @@ export default function App() {
 
     setSessions([fresh, ...sessions]);
     setCurrentId(fresh.id);
-    setInput("");
   }
 
-  function clearCurrentSession() {
-    if (!window.confirm("Clear this decision thread?")) return;
-
-    const updated = sessions.map((s) =>
-      s.id === currentId ? { ...s, messages: [] } : s
+  function renameSession(id, title) {
+    setSessions(
+      sessions.map((s) =>
+        s.id === id ? { ...s, title } : s
+      )
     );
+  }
 
-    setSessions(updated);
+  function deleteSession(id) {
+    if (!window.confirm("Delete this decision permanently?")) return;
+
+    const remaining = sessions.filter((s) => s.id !== id);
+
+    if (remaining.length === 0) {
+      const fresh = {
+        id: generateId(),
+        title: "New decision",
+        messages: [],
+        createdAt: Date.now(),
+      };
+
+      setSessions([fresh]);
+      setCurrentId(fresh.id);
+    } else {
+      setSessions(remaining);
+      setCurrentId(remaining[0].id);
+    }
+  }
+
+  function clearCurrent() {
+    if (!window.confirm("Clear this conversation?")) return;
+
+    setSessions(
+      sessions.map((s) =>
+        s.id === currentId ? { ...s, messages: [] } : s
+      )
+    );
   }
 
   /* ===================== SEND ===================== */
@@ -83,10 +189,22 @@ export default function App() {
   async function handleSend() {
     if (!input.trim() || loading) return;
 
-    const userMessage = { role: "user", text: input.trim() };
-    const updatedMessages = [...currentSession.messages, userMessage];
+    const userMessage = {
+      role: "user",
+      text: input.trim(),
+    };
 
-    updateSessionMessages(updatedMessages);
+    const updated = {
+      ...currentSession,
+      messages: [...currentSession.messages, userMessage],
+    };
+
+    setSessions(
+      sessions.map((s) =>
+        s.id === currentId ? updated : s
+      )
+    );
+
     setInput("");
     setLoading(true);
     setError("");
@@ -96,7 +214,7 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: updatedMessages.map((m) => ({
+          messages: updated.messages.map((m) => ({
             role: m.role,
             content: m.text,
           })),
@@ -107,41 +225,30 @@ export default function App() {
 
       const data = await res.json();
 
-      const finalMessages = [
-        ...updatedMessages,
-        { role: "assistant", text: data.answer },
-      ];
+      const withAnswer = {
+        ...updated,
+        messages: [
+          ...updated.messages,
+          { role: "assistant", text: data.answer },
+        ],
+      };
 
-      updateSessionMessages(finalMessages);
-
-      // Auto-title session from first question
-      if (currentSession.messages.length === 0) {
-        renameSession(
-          currentId,
-          userMessage.text.slice(0, 40) + "…"
-        );
+      if (updated.messages.length === 1) {
+        const title =
+          updated.messages[0].text.slice(0, 40) + "...";
+        withAnswer.title = title;
       }
+
+      setSessions(
+        sessions.map((s) =>
+          s.id === currentId ? withAnswer : s
+        )
+      );
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
-  }
-
-  function updateSessionMessages(messages) {
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === currentId ? { ...s, messages } : s
-      )
-    );
-  }
-
-  function renameSession(id, title) {
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, title } : s
-      )
-    );
   }
 
   function handleKeyDown(e) {
@@ -156,41 +263,34 @@ export default function App() {
   return (
     <div style={styles.app}>
       {/* SIDEBAR */}
-      <aside style={styles.sidebar}>
+      <div style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
-          <div style={styles.brand}>
-            <div style={styles.logo}>P</div>
-            PrepSeek
-          </div>
-
-          <button onClick={createNewSession} style={styles.newBtn}>
+          <strong>PrepSeek</strong>
+          <button onClick={newSession} style={styles.newBtn}>
             + New
           </button>
         </div>
 
         <div style={styles.sessionList}>
           {sessions.map((s) => (
-            <div
+            <SessionRow
               key={s.id}
-              onClick={() => setCurrentId(s.id)}
-              style={{
-                ...styles.sessionItem,
-                background:
-                  s.id === currentId ? "#eef2ff" : "transparent",
-              }}
-            >
-              {s.title}
-            </div>
+              session={s}
+              active={s.id === currentId}
+              onSelect={() => setCurrentId(s.id)}
+              onRename={(title) => renameSession(s.id, title)}
+              onDelete={() => deleteSession(s.id)}
+            />
           ))}
         </div>
-      </aside>
+      </div>
 
       {/* MAIN */}
       <div style={styles.main}>
         <header style={styles.header}>
-          <div style={styles.title}>{currentSession.title}</div>
+          <div style={{ fontWeight: 600 }}>{currentSession.title}</div>
 
-          <button onClick={clearCurrentSession} style={styles.clearBtn}>
+          <button onClick={clearCurrent} style={styles.clearBtn}>
             Clear
           </button>
         </header>
@@ -201,35 +301,20 @@ export default function App() {
               {currentSession.messages.length === 0 && (
                 <div style={styles.empty}>
                   <h2>What are you deciding today?</h2>
-                  <p style={styles.subtitle}>
+                  <p style={{ marginTop: 8, color: "#555" }}>
                     A calm assistant to think through everyday choices.
                   </p>
 
                   <div style={styles.examplesBox}>
-                    {[
-                      "Should I switch jobs this year?",
-                      "Rent or buy in my situation?",
-                      "Mac or Windows for my work?",
-                      "Is this startup idea worth pursuing?",
-                      "How should I invest my savings?",
-                    ].map((q, i) => (
-                      <div
-                        key={i}
-                        style={styles.examplePill}
-                        onClick={() => setInput(q)}
-                      >
-                        {q}
-                      </div>
-                    ))}
+                    <div style={styles.exampleLine}>Should I switch jobs this year?</div>
+                    <div style={styles.exampleLine}>Rent or buy in my situation?</div>
+                    <div style={styles.exampleLine}>Is this startup idea worth pursuing?</div>
                   </div>
 
-                  <div style={styles.disclaimer}>
+                  <div style={styles.trustNote}>
                     ⚠️ This is an AI and may be inaccurate or incomplete.  
-                    Use it as a thinking aid — not a source of absolute truth.
-                  </div>
-
-                  <div style={styles.footerNote}>
-                    Final decisions — and responsibility — are always yours.
+                    Use it as a thinking aid — not absolute truth.  
+                    Final decisions are always yours.
                   </div>
                 </div>
               )}
@@ -258,7 +343,14 @@ export default function App() {
 
               {loading && (
                 <div style={{ ...styles.row, justifyContent: "flex-start" }}>
-                  <div style={{ ...styles.bubble, ...styles.aiBubble }}>
+                  <div
+                    style={{
+                      ...styles.bubble,
+                      ...styles.aiBubble,
+                      fontStyle: "italic",
+                      color: "#666",
+                    }}
+                  >
                     Thinking…
                   </div>
                 </div>
@@ -270,7 +362,7 @@ export default function App() {
             <div style={styles.inputBar}>
               <textarea
                 rows={1}
-                placeholder="Describe your situation or question…"
+                placeholder="Describe your situation or question..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -282,7 +374,7 @@ export default function App() {
                 disabled={loading}
                 style={styles.sendBtn}
               >
-                Send
+                {loading ? "..." : "Send"}
               </button>
             </div>
           </div>
@@ -303,6 +395,8 @@ const styles = {
       "linear-gradient(180deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%)",
   },
 
+  /* SIDEBAR */
+
   sidebar: {
     width: 260,
     background: "#ffffff",
@@ -312,37 +406,19 @@ const styles = {
   },
 
   sidebarHeader: {
-    padding: 14,
+    padding: "14px 16px",
     borderBottom: "1px solid #e5e7eb",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
-  brand: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    fontWeight: 700,
-  },
-
-  logo: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    background: "#0f172a",
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   newBtn: {
     border: "1px solid #e5e7eb",
-    background: "#f8fafc",
     borderRadius: 6,
     padding: "4px 10px",
     cursor: "pointer",
+    background: "#f8fafc",
   },
 
   sessionList: {
@@ -353,11 +429,20 @@ const styles = {
 
   sessionItem: {
     padding: "8px 10px",
-    borderRadius: 6,
+    borderRadius: 8,
     cursor: "pointer",
     fontSize: 14,
-    color: "#1e293b",
   },
+
+  iconBtn: {
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontSize: 14,
+    opacity: 0.6,
+  },
+
+  /* MAIN */
 
   main: {
     flex: 1,
@@ -374,13 +459,9 @@ const styles = {
     alignItems: "center",
   },
 
-  title: {
-    fontWeight: 600,
-  },
-
   clearBtn: {
-    border: "1px solid #e5e7eb",
     background: "transparent",
+    border: "1px solid #e5e7eb",
     borderRadius: 6,
     padding: "6px 12px",
     cursor: "pointer",
@@ -397,7 +478,7 @@ const styles = {
     width: "100%",
     maxWidth: 900,
     background: "#ffffff",
-    borderRadius: 14,
+    borderRadius: 12,
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -411,45 +492,35 @@ const styles = {
 
   empty: {
     textAlign: "center",
-    marginTop: 80,
-  },
-
-  subtitle: {
-    marginTop: 10,
-    color: "#555",
+    marginTop: 100,
+    color: "#475569",
   },
 
   examplesBox: {
-    marginTop: 30,
+    marginTop: 24,
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: 10,
   },
 
-  examplePill: {
+  exampleLine: {
     background: "#f1f5f9",
-    borderRadius: 20,
     padding: "8px 14px",
+    borderRadius: 999,
     fontSize: 14,
-    cursor: "pointer",
   },
 
-  disclaimer: {
-    marginTop: 30,
+  trustNote: {
+    marginTop: 28,
     fontSize: 13,
-    color: "#666",
-  },
-
-  footerNote: {
-    marginTop: 8,
-    fontSize: 13,
-    color: "#475569",
+    color: "#64748b",
+    lineHeight: 1.6,
   },
 
   row: {
     display: "flex",
-    marginBottom: 14,
+    marginBottom: 12,
   },
 
   bubble: {
@@ -469,7 +540,7 @@ const styles = {
 
   inputBar: {
     display: "flex",
-    gap: 8,
+    gap: 10,
     padding: 14,
     borderTop: "1px solid #e5e7eb",
   },
@@ -478,7 +549,7 @@ const styles = {
     flex: 1,
     resize: "none",
     border: "1px solid #e5e7eb",
-    borderRadius: 8,
+    borderRadius: 10,
     padding: "10px 12px",
     fontSize: 14,
   },
@@ -487,14 +558,14 @@ const styles = {
     background: "#0f172a",
     color: "#ffffff",
     border: "none",
-    borderRadius: 8,
-    padding: "10px 20px",
+    borderRadius: 10,
+    padding: "10px 18px",
     cursor: "pointer",
   },
 
   error: {
     color: "#b91c1c",
-    fontSize: 13,
+    fontSize: 12,
     padding: "6px 12px",
     background: "#fef2f2",
   },
