@@ -16,32 +16,33 @@ export default function App() {
       const saved = localStorage.getItem("doubtSolverHistory");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) setMessages(parsed);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+        }
       }
     } catch {}
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      "doubtSolverHistory",
-      JSON.stringify(messages)
-    );
+    localStorage.setItem("doubtSolverHistory", JSON.stringify(messages));
   }, [messages]);
 
   function handleClearChat() {
-    if (!window.confirm("Clear the entire chat?")) return;
+    if (!window.confirm("Clear the entire conversation?")) return;
     setMessages([]);
     localStorage.removeItem("doubtSolverHistory");
   }
 
   /* ===================== SEND ===================== */
 
-  async function handleSend() {
-    if (!input.trim() || loading) return;
+  async function handleSend(textOverride) {
+    const finalInput = textOverride ?? input;
+
+    if (!finalInput.trim() || loading) return;
 
     const userMessage = {
       role: "user",
-      text: input.trim(),
+      text: finalInput.trim(),
     };
 
     const nextMessages = [...messages, userMessage];
@@ -71,7 +72,7 @@ export default function App() {
         { role: "assistant", text: data.answer },
       ]);
     } catch {
-      setError("Something went wrong. Try again.");
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -85,6 +86,14 @@ export default function App() {
   }
 
   /* ===================== UI ===================== */
+
+  const examples = [
+    "Should I switch jobs this year?",
+    "Rent or buy in my situation?",
+    "Mac or Windows for my work?",
+    "Is this startup idea worth pursuing?",
+    "How should I invest my savings?",
+  ];
 
   return (
     <div style={styles.app}>
@@ -103,34 +112,47 @@ export default function App() {
       {/* Main */}
       <main style={styles.container}>
         <div style={styles.chatBox}>
-          <div style={styles.messages}>
-            {/* Empty State */}
-            {messages.length === 0 && (
-              <div style={styles.empty}>
-                <h1 style={styles.heroTitle}>
-                  What are you deciding today?
-                </h1>
+          {/* Empty State */}
+          {messages.length === 0 && (
+            <div style={styles.empty}>
+              <h1 style={styles.title}>What are you deciding today?</h1>
 
-                <p style={styles.heroSubtitle}>
-                  A calm assistant to think through everyday choices.
+              <p style={styles.subtitle}>
+                A calm assistant to think through everyday choices.
+              </p>
+
+              <div style={styles.examplesGrid}>
+                {examples.map((ex, i) => (
+                  <button
+                    key={i}
+                    style={styles.exampleChip}
+                    onClick={() => handleSend(ex)}
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+
+              {/* Trust & Disclaimer */}
+              <div style={styles.trustBlock}>
+                <p style={styles.trustLine}>
+                  You’ll get reasoning, trade-offs, and perspective — not commands.
                 </p>
 
-                <div style={styles.promptGrid}>
-                  <div style={styles.prompt}>Should I switch jobs this year?</div>
-                  <div style={styles.prompt}>Rent or buy in my situation?</div>
-                  <div style={styles.prompt}>Mac or Windows for my work?</div>
-                  <div style={styles.prompt}>Is this startup idea worth pursuing?</div>
-                  <div style={styles.prompt}>How should I invest my savings?</div>
-                </div>
+                <p style={styles.disclaimer}>
+                  ⚠️ This is an AI and may occasionally be inaccurate or incomplete.  
+                  Use it as a thinking aid, not a source of absolute truth.
+                </p>
 
-                <p style={styles.trustNote}>
-                  You’ll get guidance, trade-offs, and reasoning — not commands.  
-                  Final decisions are always yours.
+                <p style={styles.finalNote}>
+                  Final decisions — and responsibility — are always yours.
                 </p>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Messages */}
+          {/* Messages */}
+          <div style={styles.messages}>
             {messages.map((m, i) => (
               <div
                 key={i}
@@ -160,10 +182,10 @@ export default function App() {
                     ...styles.bubble,
                     ...styles.aiBubble,
                     fontStyle: "italic",
-                    color: "#666",
+                    color: "#64748b",
                   }}
                 >
-                  Thinking…
+                  Considering…
                 </div>
               </div>
             )}
@@ -183,7 +205,7 @@ export default function App() {
             />
 
             <button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={loading}
               style={styles.sendBtn}
             >
@@ -205,7 +227,7 @@ const styles = {
     flexDirection: "column",
     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
     background:
-      "linear-gradient(180deg, #f8fafc 0%, #eef2ff 60%, #f8fafc 100%)",
+      "linear-gradient(180deg, #f8fafc 0%, #eef2ff 50%, #f8fafc 100%)",
   },
 
   header: {
@@ -221,20 +243,21 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-  },
-
-  brandText: {
     fontSize: 18,
     fontWeight: 700,
     color: "#0f172a",
   },
 
+  brandText: {
+    letterSpacing: "0.2px",
+  },
+
   logo: {
     width: 34,
     height: 34,
-    borderRadius: 8,
+    borderRadius: 9,
     background: "#0f172a",
-    color: "#fff",
+    color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -254,7 +277,7 @@ const styles = {
     flex: 1,
     display: "flex",
     justifyContent: "center",
-    padding: 18,
+    padding: 20,
   },
 
   chatBox: {
@@ -265,62 +288,74 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.04)",
+    boxShadow: "0 10px 40px rgba(0,0,0,0.04)",
   },
 
   messages: {
     flex: 1,
-    padding: "28px 26px",
+    padding: 22,
     overflowY: "auto",
   },
-
-  /* Empty state */
 
   empty: {
     textAlign: "center",
     marginTop: 90,
-    color: "#334155",
-  },
-
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: 700,
-    marginBottom: 10,
     color: "#0f172a",
   },
 
-  heroSubtitle: {
+  title: {
+    fontSize: 30,
+    fontWeight: 700,
+    marginBottom: 10,
+  },
+
+  subtitle: {
     fontSize: 16,
-    color: "#555",
+    color: "#475569",
+    marginBottom: 28,
+  },
+
+  examplesGrid: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 12,
     marginBottom: 34,
   },
 
-  promptGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-    gap: 14,
-    maxWidth: 640,
-    margin: "0 auto 34px",
-  },
-
-  prompt: {
+  exampleChip: {
     background: "#f1f5f9",
-    padding: "12px 16px",
-    borderRadius: 10,
-    fontSize: 14,
-    color: "#334155",
+    border: "1px solid #e2e8f0",
+    borderRadius: 999,
+    padding: "10px 16px",
     cursor: "pointer",
+    fontSize: 14,
+    color: "#0f172a",
+    transition: "all 0.15s ease",
   },
 
-  trustNote: {
-    fontSize: 13,
-    color: "#64748b",
+  trustBlock: {
     maxWidth: 520,
     margin: "0 auto",
-    lineHeight: "1.6",
+    fontSize: 13.5,
+    color: "#475569",
+    lineHeight: 1.6,
   },
 
-  /* Chat */
+  trustLine: {
+    marginBottom: 8,
+  },
+
+  disclaimer: {
+    marginTop: 8,
+    color: "#64748b",
+    fontSize: 12.5,
+  },
+
+  finalNote: {
+    marginTop: 6,
+    fontWeight: 500,
+  },
 
   row: {
     display: "flex",
@@ -331,26 +366,26 @@ const styles = {
     maxWidth: "75%",
     padding: "12px 16px",
     borderRadius: 12,
-    lineHeight: "1.6",
     fontSize: 15,
+    lineHeight: 1.6,
   },
 
   userBubble: {
     background: "#0f172a",
     color: "#ffffff",
+    borderBottomRightRadius: 4,
   },
 
   aiBubble: {
     background: "#f1f5f9",
     color: "#0f172a",
+    borderBottomLeftRadius: 4,
   },
-
-  /* Input */
 
   inputBar: {
     display: "flex",
     gap: 10,
-    padding: "14px 16px",
+    padding: 14,
     borderTop: "1px solid #e5e7eb",
   },
 
@@ -360,7 +395,7 @@ const styles = {
     border: "1px solid #e5e7eb",
     borderRadius: 10,
     padding: "10px 12px",
-    fontSize: 14,
+    fontSize: 15,
     outline: "none",
   },
 
@@ -369,15 +404,16 @@ const styles = {
     color: "#ffffff",
     border: "none",
     borderRadius: 10,
-    padding: "10px 18px",
+    padding: "10px 20px",
     cursor: "pointer",
     fontWeight: 600,
   },
 
   error: {
     color: "#b91c1c",
-    fontSize: 12,
+    fontSize: 13,
     padding: "8px 14px",
     background: "#fef2f2",
+    borderTop: "1px solid #fecaca",
   },
 };
