@@ -265,11 +265,15 @@ export default function App() {
       {/* SIDEBAR */}
       <div style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
-          <strong>PrepSeek</strong>
-          <button onClick={newSession} style={styles.newBtn}>
-            + New
-          </button>
-        </div>
+  <div style={styles.brand}>
+    <div style={styles.logo}>P</div>
+    <strong>PrepSeek</strong>
+  </div>
+
+  <button onClick={newSession} style={styles.newBtn}>
+    + New
+  </button>
+</div>
 
         <div style={styles.sessionList}>
           {sessions.map((s) => (
@@ -569,4 +573,24 @@ const styles = {
     padding: "6px 12px",
     background: "#fef2f2",
   },
+
+  brand: {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+},
+
+logo: {
+  width: 28,
+  height: 28,
+  borderRadius: 7,
+  background: "#0f172a",
+  color: "#fff",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontWeight: 700,
+  fontSize: 14,
+},
+
 };
