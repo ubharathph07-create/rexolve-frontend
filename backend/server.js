@@ -72,7 +72,7 @@ messages: [
 {
 role: "system",
 content: `
-You explain concepts, words, phrases, and ideas clearly and simply.
+You explain concepts, words, phrases, and ideas simply.
 Be concise. 
 `,
 
