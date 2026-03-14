@@ -112,7 +112,7 @@ export default function App() {
 
     const first = {
       id: generateId(),
-      title: "New decision",
+      title: "New chat",
       messages: [],
       createdAt: Date.now(),
     };
@@ -154,14 +154,14 @@ export default function App() {
   }
 
   function deleteSession(id) {
-    if (!window.confirm("Delete this decision permanently?")) return;
+    if (!window.confirm("Delete this chat permanently?")) return;
 
     const remaining = sessions.filter((s) => s.id !== id);
 
     if (remaining.length === 0) {
       const fresh = {
         id: generateId(),
-        title: "New decision",
+        title: "New chat",
         messages: [],
         createdAt: Date.now(),
       };
@@ -366,7 +366,7 @@ export default function App() {
             <div style={styles.inputBar}>
               <textarea
                 rows={1}
-                placeholder="Describe your situation or question..."
+                placeholder="Type a word or concept to explain..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
