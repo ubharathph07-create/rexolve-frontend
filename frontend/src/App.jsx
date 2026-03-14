@@ -136,7 +136,7 @@ export default function App() {
   function newSession() {
     const fresh = {
       id: generateId(),
-      title: "New decision",
+      title: "New tab",
       messages: [],
       createdAt: Date.now(),
     };
